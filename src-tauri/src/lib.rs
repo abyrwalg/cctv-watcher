@@ -2,6 +2,7 @@
 use notify::{EventKind, RecommendedWatcher, RecursiveMode, Result, Watcher};
 use std::path::Path;
 use std::sync::mpsc::channel;
+use std::thread;
 use winrt_notification::Toast;
 
 #[tauri::command]
@@ -61,7 +62,9 @@ fn watch_folder(folder_path: &str) -> Result<()> {
 
 #[tauri::command]
 fn start_watching_folder(path: &str) {
-    watch_folder(&path);
+    let path = path.to_string();
+
+    thread::spawn(move || watch_folder(&path));
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
