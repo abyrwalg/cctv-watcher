@@ -14,15 +14,13 @@ function App() {
       multiple: false,
     });
 
-    console.log(folder);
-
     setFolderPath(folder);
     invoke('start_watching_folder', { path: folder });
   }
 
   return (
     <main className="container">
-      <h1>Welcome to Tauri + React</h1>
+      <h1>CCTV Watcher</h1>
 
       {folderPath ? (
         <div>
