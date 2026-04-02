@@ -2,7 +2,7 @@
 use notify::{EventKind, RecommendedWatcher, RecursiveMode, Result, Watcher};
 use std::path::Path;
 use std::sync::mpsc::channel;
-use std::thread;
+use std::{thread, time::Duration};
 use winrt_notification::Toast;
 
 #[tauri::command]
@@ -48,6 +48,7 @@ fn watch_folder(folder_path: &str) -> Result<()> {
                         println!("New file detected: {:?}", path);
                         let new_file_path = Path::new(&path);
                         if is_jpg(Path::new(&new_file_path)) {
+                            thread::sleep(Duration::from_millis(500));
                             notify(&new_file_path)
                         }
                     }
