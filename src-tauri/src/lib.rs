@@ -2,13 +2,15 @@
 use notify::{Error as NotifyError, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use std::collections::HashSet;
 use std::io::Error;
+use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
-// use std::sync::mpsc::channel;
 use std::sync::Mutex;
 use std::{thread, time::Duration};
-// use winrt_notification::Toast;
 use winrt_toast_reborn::content::image::ImagePlacement;
-use winrt_toast_reborn::{Image, Toast, ToastDuration, ToastManager};
+use winrt_toast_reborn::{Action, Image, Toast, ToastDuration, ToastManager};
+
+const CREATE_NO_WINDOW: u32 = 0x08000000;
+const AUM_ID: &str = "abyrwalg.cctv-watcher";
 
 struct WatchState {
     watcher: Mutex<RecommendedWatcher>,
@@ -62,23 +64,18 @@ fn is_jpg(path: &Path) -> bool {
 }
 
 fn notify(image: &Path) -> Result<(), Error> {
-    /* let image_str = image.to_string_lossy();
-
-    Toast::new(Toast::POWERSHELL_APP_ID)
-        .title("Warning")
-        .text1("Movement detected")
-        .image(image, "Preview image")
-        .show()
-        .unwrap(); */
     let image_path: PathBuf = image.to_path_buf();
 
-    let manager = ToastManager::new(ToastManager::POWERSHELL_AUM_ID);
-    let manager = manager.on_activated(None, move |_| {
+    let manager = ToastManager::new(AUM_ID);
+    let manager = manager.on_activated(None, move |action| {
+        println!("Toast activated with action: {:?}", action);
+
         let image_path = image_path.clone();
         let path = image_path.to_string_lossy().to_string();
 
         let _ = std::process::Command::new("cmd")
             .args(["/C", "start", "", &path])
+            .creation_flags(CREATE_NO_WINDOW)
             .spawn();
     });
 
@@ -93,9 +90,9 @@ fn notify(image: &Path) -> Result<(), Error> {
         //  .text3("Conference Room A")
         .image(1, hero_image)
         // .image(2, logo_image)
-        .duration(ToastDuration::Long);
-    // .action(Action::new("Join", "join_meeting", "meeting_id=123"))
-    // .action(Action::new("Snooze", "snooze", ""));
+        .duration(ToastDuration::Short)
+        .action(Action::new("View", "does_not", "_matter")); // This is a workaround to make the toast clickable inside windows notifications center. The action itself does not do anything, but it allows the on_activated callback to be triggered when the toast is clicked.
+                                                             // .action(Action::new("Snooze", "snooze", ""));
 
     manager
         .show(&toast)
@@ -138,44 +135,8 @@ fn add_folder(path: &str, state: tauri::State<WatchState>) -> Result<(), Error> 
     Ok(())
 }
 
-/* fn watch_folder(folder_path: &str) -> NotifyResult<()> {
-    let (tx, rx) = channel();
-
-    let mut watcher = notify::recommended_watcher(tx)?;
-
-    let path = Path::new(folder_path);
-
-    watcher.watch(path, RecursiveMode::NonRecursive)?;
-    println!("Watching {:?}", path);
-
-    for res in rx {
-        match res {
-            Ok(event) => {
-                // Filter for newly created files
-                if let EventKind::Create(_) = event.kind {
-                    for path in event.paths {
-                        println!("New file detected: {:?}", path);
-                        let new_file_path = Path::new(&path);
-                        if is_jpg(new_file_path) {
-                            thread::sleep(Duration::from_millis(500));
-                            notify(&new_file_path)
-                        }
-                    }
-                }
-            }
-            Err(e) => println!("watch error: {:?}", e),
-        }
-    }
-
-    Ok(())
-}
- */
 #[tauri::command]
 fn start_watching_folder(path: &str, state: tauri::State<WatchState>) -> Result<(), String> {
-    // let path_string = path.to_string();
-
-    // thread::spawn(move || watch_folder(&path_string));
-
     add_folder(&path, state).map_err(|e| e.to_string())?;
 
     Ok(())
@@ -212,6 +173,13 @@ fn stop_watching_folder(path: &str, state: tauri::State<WatchState>) -> Result<(
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    winrt_toast_reborn::register(
+        AUM_ID,                                    // Your unique App User Model ID
+        "CCTV Watcher",                            // Display name
+        Some(Path::new("C:\\path\\to\\icon.ico")), // Optional icon
+    )
+    .expect("Could not register the AUM_ID");
+
     tauri::Builder::default()
         .plugin(tauri_plugin_process::init())
         .manage(WatchState::new().expect("failed to initialize WatchState"))
