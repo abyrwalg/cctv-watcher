@@ -6,6 +6,7 @@ use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::{thread, time::Duration};
+use tauri::Manager;
 use winrt_toast_reborn::content::image::ImagePlacement;
 use winrt_toast_reborn::{Action, Image, Toast, ToastDuration, ToastManager};
 
@@ -173,14 +174,20 @@ fn stop_watching_folder(path: &str, state: tauri::State<WatchState>) -> Result<(
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    winrt_toast_reborn::register(
-        AUM_ID,                                    // Your unique App User Model ID
-        "CCTV Watcher",                            // Display name
-        Some(Path::new("C:\\path\\to\\icon.ico")), // Optional icon
-    )
-    .expect("Could not register the AUM_ID");
-
     tauri::Builder::default()
+        .setup(|app| {
+            let app_handle = app.handle();
+
+            let icon_path = app_handle
+                .path()
+                .resolve("icons/icon.ico", tauri::path::BaseDirectory::Resource)
+                .expect("Failed to resolve icon");
+
+            winrt_toast_reborn::register(AUM_ID, "CCTV Watcher", Some(icon_path.as_path()))
+                .expect("Could not register the AUM_ID");
+
+            Ok(())
+        })
         .plugin(tauri_plugin_process::init())
         .manage(WatchState::new().expect("failed to initialize WatchState"))
         .plugin(tauri_plugin_dialog::init())

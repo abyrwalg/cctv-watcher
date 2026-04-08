@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "cctv-watcher",
+  "productName": "CCTV Watcher",
   "version": "0.1.0",
-  "identifier": "com.user.cctv-watcher",
+  "identifier": "abyrwalg.cctv-watcher",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "cctv-watcher",
+        "title": "CCTV Watcher",
         "width": 800,
         "height": 600
       }
@@ -30,6 +30,7 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "resources": ["icons/icon.ico"]
   }
 }
