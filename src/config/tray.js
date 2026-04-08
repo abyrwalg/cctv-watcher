@@ -1,6 +1,18 @@
 import { defaultWindowIcon } from '@tauri-apps/api/app';
+import { Menu } from '@tauri-apps/api/menu';
 import { TrayIcon } from '@tauri-apps/api/tray';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { exit } from '@tauri-apps/plugin-process';
+
+async function unMinimize(appWindow) {
+  try {
+    await appWindow.unminimize();
+    await appWindow.show();
+    await appWindow.setFocus();
+  } catch (error) {
+    console.log('Error unminimizing window:', error);
+  }
+}
 
 async function createTray() {
   try {
@@ -22,16 +34,39 @@ async function createTray() {
       }
     });
 
+    const menu = await Menu.new({
+      items: [
+        {
+          id: 'show',
+          text: 'Show',
+          action: () => {
+            unMinimize(appWindow);
+          },
+        },
+        {
+          id: 'quit',
+          text: 'Quit',
+          action: () => {
+            exit();
+          },
+        },
+      ],
+    });
+
     const options = {
       icon: await defaultWindowIcon(),
       id: trayId,
       action: async (event) => {
-        if (event.type === 'Click') {
-          await appWindow.unminimize();
-          await appWindow.show();
-          await appWindow.setFocus();
+        if (
+          event.type === 'Click' &&
+          event.button === 'Left' &&
+          event.buttonState === 'Up'
+        ) {
+          await unMinimize(appWindow);
         }
       },
+      menu,
+      menuOnLeftClick: false,
     };
     await TrayIcon.new(options);
   } catch (error) {
