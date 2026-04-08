@@ -13,6 +13,10 @@ export default function Folder({ folderPath, setFolderPaths, isLastOne }) {
         multiple: false,
       });
 
+      if (!folder) {
+        return;
+      }
+
       setFolderPaths((prevFolders) => [
         ...prevFolders,
         { id: Math.random(), path: folder },
