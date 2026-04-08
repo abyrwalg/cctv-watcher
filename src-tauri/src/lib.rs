@@ -6,7 +6,9 @@ use std::path::{Path, PathBuf};
 // use std::sync::mpsc::channel;
 use std::sync::Mutex;
 use std::{thread, time::Duration};
-use winrt_notification::Toast;
+// use winrt_notification::Toast;
+use winrt_toast_reborn::content::image::ImagePlacement;
+use winrt_toast_reborn::{Image, Toast, ToastDuration, ToastManager};
 
 struct WatchState {
     watcher: Mutex<RecommendedWatcher>,
@@ -25,7 +27,10 @@ impl WatchState {
                             let new_file_path = Path::new(&path);
                             if is_jpg(new_file_path) {
                                 thread::sleep(Duration::from_millis(500));
-                                notify(&new_file_path)
+                                match notify(&new_file_path) {
+                                    Ok(_) => println!("Notification sent for {:?}", new_file_path),
+                                    Err(e) => println!("Failed to send notification: {:?}", e),
+                                }
                             }
                         }
                     }
@@ -56,13 +61,47 @@ fn is_jpg(path: &Path) -> bool {
     }
 }
 
-fn notify(image: &Path) {
+fn notify(image: &Path) -> Result<(), Error> {
+    /* let image_str = image.to_string_lossy();
+
     Toast::new(Toast::POWERSHELL_APP_ID)
         .title("Warning")
         .text1("Movement detected")
         .image(image, "Preview image")
         .show()
-        .unwrap();
+        .unwrap(); */
+    let image_path: PathBuf = image.to_path_buf();
+
+    let manager = ToastManager::new(ToastManager::POWERSHELL_AUM_ID);
+    let manager = manager.on_activated(None, move |_| {
+        let image_path = image_path.clone();
+        let path = image_path.to_string_lossy().to_string();
+
+        let _ = std::process::Command::new("cmd")
+            .args(["/C", "start", "", &path])
+            .spawn();
+    });
+
+    let hero_image = Image::new_local(image)
+        .map_err(|_| Error::other("Could not create hero image"))?
+        .with_placement(ImagePlacement::Hero);
+
+    let mut toast = Toast::new();
+    toast
+        .text1("Warning")
+        .text2("Movement detected")
+        //  .text3("Conference Room A")
+        .image(1, hero_image)
+        // .image(2, logo_image)
+        .duration(ToastDuration::Long);
+    // .action(Action::new("Join", "join_meeting", "meeting_id=123"))
+    // .action(Action::new("Snooze", "snooze", ""));
+
+    manager
+        .show(&toast)
+        .map_err(|_| Error::other("Could not show toast"))?;
+
+    Ok(())
 }
 
 fn add_folder(path: &str, state: tauri::State<WatchState>) -> Result<(), Error> {
